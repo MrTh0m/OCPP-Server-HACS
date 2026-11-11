@@ -2,10 +2,10 @@
 
 Deux cards Lovelace pour l'add-on Home Assistant **OCPP Backoffice Server** ([MrTh0m/hassio-addons](https://github.com/MrTh0m/hassio-addons)). Elles lisent les entités que l'add-on publie par MQTT Discovery.
 
-- `custom:ocpp-charger-card` : statut d'un connecteur, puissance, bilan de la session ou de la dernière charge, bouton pour démarrer ou arrêter.
-- `custom:ocpp-vehicle-card` : consommation et coût estimés aux 100 km, dernière charge, kilométrage.
+- `custom:ocpp-charger-card` : statut d'un connecteur, puissance, bilan de la session ou de la dernière charge, choix du véhicule, bouton pour démarrer ou arrêter.
+- `custom:ocpp-vehicle-card` : consommation et coût estimés aux 100 km, dernière charge, kilométrage, cumuls du mois.
 
-Add-on requis : **0.19.42 ou plus récent** (capteur « En ligne », capteurs dérivés du véhicule, valeurs de session remises à zéro).
+Add-on requis : **0.19.43 ou plus récent** (capteur « En ligne », choix du véhicule, capteurs dérivés et cumuls mensuels du véhicule). Avec une version plus ancienne, les éléments correspondants sont masqués ou affichent « n/d ».
 
 ## Installation (HACS)
 
@@ -29,10 +29,12 @@ subtitle: Schneider EVlink Home
 | `entity` | oui | Capteur de statut du connecteur |
 | `name` | non | Nom affiché |
 | `subtitle` | non | Ligne sous le nom |
-| `image` | non | URL d'une image de borne (par exemple `/local/borne.png`) |
+| `image` | non | URL d'une image de votre borne (par exemple `/local/borne.png`), à la place du dessin par défaut |
 | `entities` | non | Remplacer une entité retrouvée automatiquement |
 
-L'image par défaut a un voyant vert ; la card la recolore selon le statut (bleu en charge, orange en pause, rouge en défaut, grise hors ligne). Une image personnalisée est recolorée de la même façon : partez d'un visuel à voyant vert.
+L'image par défaut est un dessin de borne murale générique, sans marque, à voyant vert. La card recolore le voyant selon le statut (bleu en charge, orange en pause, rouge en défaut, gris hors ligne). Une image personnalisée est recolorée de la même façon : partez d'un visuel à voyant vert, déposé dans `config/www/`.
+
+La liste « Véhicule pour la prochaine charge » désigne le véhicule auquel la charge sera rattachée. Pendant une charge elle affiche le véhicule de la session et n'est pas modifiable.
 
 Le bouton agit sur l'interrupteur « autoriser la charge » : **Démarrer** quand un véhicule est branché, **Arrêter** pendant la charge.
 
@@ -71,6 +73,7 @@ Borne, à partir de `sensor.<borne>_connecteur_<n>_statut` :
 | `total` | `sensor.<borne>_connecteur_<n>_energie_totale` |
 | `control` | `switch.<borne>_connecteur_<n>_autoriser_la_charge` |
 | `online` | `binary_sensor.<borne>_en_ligne` |
+| `vehicle` | `select.<borne>_connecteur_<n>_vehicule` |
 
 Véhicule, à partir de `binary_sensor.<vehicule>_en_charge` :
 
@@ -89,6 +92,10 @@ Véhicule, à partir de `binary_sensor.<vehicule>_en_charge` :
 | `odometer` | `sensor.<vehicule>_odometre_derniere_charge` |
 | `kmSince` | `sensor.<vehicule>_km_depuis_la_charge_precedente` |
 | `capacity` | `sensor.<vehicule>_capacite_batterie` |
+| `monthCount` | `sensor.<vehicule>_charges_du_mois` |
+| `monthEnergy` | `sensor.<vehicule>_energie_du_mois` |
+| `monthCost` | `sensor.<vehicule>_cout_du_mois` |
+| `monthKm` | `sensor.<vehicule>_distance_du_mois` |
 
 Exemple de remplacement :
 
