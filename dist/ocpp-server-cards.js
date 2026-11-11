@@ -7,7 +7,7 @@
  * donner l'entité principale ; les autres sont retrouvées par leur nom, et
  * chacune peut être remplacée dans la clé `entities` de la configuration.
  */
-const VERSION = "0.2.0";
+const VERSION = "0.2.1";
 
 /* Statuts OCPP 1.6 d'un connecteur. `hue` : rotation de teinte appliquée à
  * l'image (dont le voyant est vert), pour qu'une seule image suffise.
@@ -28,6 +28,13 @@ const UNKNOWN_STATUS = { label: "Inconnu", color: "#616161", gray: true, step: -
 const SESSION_STATUSES = ["Charging", "SuspendedEV", "SuspendedEVSE", "Finishing"];
 const STEPS = ["Disponible", "Branchée", "En charge", "Terminée"];
 const NA = "n/d";
+
+const norm = (s) =>
+  String(s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -120,6 +127,7 @@ class OcppBaseCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (!this._config) return;
+    this._resolve();
     const sig = this._signature();
     if (sig !== this._sig) {
       this._sig = sig;
@@ -129,6 +137,36 @@ class OcppBaseCard extends HTMLElement {
 
   getCardSize() {
     return 6;
+  }
+
+  /* Les entités sont d'abord cherchées par identifiant (voir setConfig). Mais
+   * Home Assistant garde l'identifiant d'origine d'une entité même si son nom
+   * a changé depuis : pour celles qui manquent, on cherche donc, parmi les
+   * entités du même appareil, celle dont le nom affiché se termine par le
+   * libellé publié par l'add-on. Relancé seulement quand le registre change. */
+  _resolve() {
+    const registry = this._hass.entities;
+    if (!registry || !this._labels) return;
+    const size = Object.keys(registry).length;
+    if (size === this._resolvedAt) return;
+    this._resolvedAt = size;
+    const main = registry[this._config.entity];
+    if (!main || !main.device_id) return;
+    const overrides = this._config.entities || {};
+    let siblings = null;
+    for (const [key, spec] of Object.entries(this._labels)) {
+      if (overrides[key]) continue;
+      if (this._ids[key] && this._hass.states[this._ids[key]]) continue;
+      if (!siblings) siblings = Object.keys(registry).filter((id) => registry[id].device_id === main.device_id);
+      const [domain, label] = spec;
+      const want = norm(label);
+      const hit = siblings.find((id) => {
+        if (!id.startsWith(domain + ".")) return false;
+        const st = this._hass.states[id];
+        return !!st && norm(st.attributes.friendly_name).endsWith(want);
+      });
+      if (hit) this._ids[key] = hit;
+    }
   }
 
   _st(key) {
@@ -219,6 +257,23 @@ class OcppChargerCard extends OcppBaseCard {
       });
     }
     this._ids = Object.assign(ids, config.entities || {});
+    const c = `connecteur ${m ? m[2] : 1} `;
+    this._labels = {
+      power: ["sensor", c + "puissance"],
+      current: ["sensor", c + "courant"],
+      voltage: ["sensor", c + "tension"],
+      sessionEnergy: ["sensor", c + "énergie session"],
+      sessionCost: ["sensor", c + "coût session"],
+      duration: ["sensor", c + "durée de charge"],
+      start: ["sensor", c + "début de session"],
+      lastEnergy: ["sensor", c + "dernière charge énergie"],
+      lastCost: ["sensor", c + "dernière charge coût"],
+      total: ["sensor", c + "énergie totale"],
+      control: ["switch", c + "autoriser la charge"],
+      online: ["binary_sensor", "en ligne"],
+      vehicle: ["select", c + "véhicule"],
+    };
+    this._resolvedAt = null;
     this._sig = null;
     if (this._hass) this.hass = this._hass;
   }
@@ -413,6 +468,26 @@ class OcppVehicleCard extends OcppBaseCard {
       });
     }
     this._ids = Object.assign(ids, config.entities || {});
+    this._labels = {
+      chargingAt: ["sensor", "en charge sur"],
+      sessionEnergy: ["sensor", "énergie session"],
+      sessionCost: ["sensor", "coût session"],
+      duration: ["sensor", "durée de charge"],
+      consumption: ["sensor", "consommation estimée"],
+      cost100: ["sensor", "coût aux 100 km"],
+      pct: ["sensor", "dernière charge part de batterie"],
+      lastEnergy: ["sensor", "dernière charge énergie"],
+      lastCost: ["sensor", "dernière charge coût"],
+      lastCharger: ["sensor", "dernière charge borne"],
+      odometer: ["sensor", "odomètre (dernière charge)"],
+      kmSince: ["sensor", "km depuis la charge précédente"],
+      capacity: ["sensor", "capacité batterie"],
+      monthCount: ["sensor", "charges du mois"],
+      monthEnergy: ["sensor", "énergie du mois"],
+      monthCost: ["sensor", "coût du mois"],
+      monthKm: ["sensor", "distance du mois"],
+    };
+    this._resolvedAt = null;
     this._sig = null;
     if (this._hass) this.hass = this._hass;
   }

@@ -55,7 +55,7 @@ La consommation et le coût aux 100 km sont des estimations : ils supposent que 
 
 ## Entités retrouvées automatiquement
 
-Les cards partent de l'entité principale et en déduisent les autres par leur identifiant. Si vous avez renommé une entité, indiquez-la dans `entities`.
+Les cards partent de l'entité principale et en déduisent les autres par leur identifiant. Si un identifiant ne correspond pas (Home Assistant garde l'identifiant d'origine d'une entité dont le nom a changé depuis), la card cherche dans le même appareil l'entité dont le nom affiché se termine par le libellé publié par l'add-on. En dernier recours, indiquez l'entité dans `entities`.
 
 Borne, à partir de `sensor.<borne>_connecteur_<n>_statut` :
 
